@@ -258,6 +258,12 @@ class GAN(BaseModel):
             quant = nn.MaxPool3d((1, 1, self.hparams.downbranch))(quant)  # extra downsample, (1, C, X, Y, Z/2)
             quant = quant.permute(4, 1, 2, 3, 0)[:, :, :, :, 0]  # (Z, C, X, Y)
 
+        if self.hparams.resizebranch != 1:
+            quant = quant.permute(1, 2, 3, 0).unsqueeze(0)  # (1, C, X, Y, Z)
+            quant = nn.Upsample(scale_factor=(1, 1, self.hparams.resizebranch), mode='trilinear')(
+                quant)  # extra downsample, (1, C, X, Y, Z/2)
+            quant = quant.permute(4, 1, 2, 3, 0)[:, :, :, :, 0]  # (Z, C, X, Y)
+
         quant = self.decoder.conv_in(quant)  # (16, 256, 16, 16)
         quant = quant.permute(1, 2, 3, 0).unsqueeze(0)  # (1, C, X, Y, Z)
 
