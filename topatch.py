@@ -20,6 +20,23 @@ def read_2d_tif_to_3d(xlist):
 def tif_to_patches(npys, **kwargs):
     """
     Convert a tif file to a folder of patches
+
+    Args:
+        npys: list of 3D numpy arrays to be converted to patches
+        destination: list of output folder names, one per input array (e.g., ['maskpatch/', 'oripatch/'])
+        dh: tuple (dz, dx, dy) - patch dimensions in z, x, y (e.g., (64, 256, 256))
+        step: tuple (sz, sx, sy) - step size for sliding window in z, x, y (e.g., (64, 256, 256))
+        permute: tuple to permute axes of output patches, or None to keep original order
+        trd: list of (min, max) tuples for hard thresholding each array, or None to skip
+        norm: list of normalization methods per array:
+            - '01': normalize to [0, 1]
+            - '11': normalize to [-1, 1]
+            - 'zrescale': apply log-based z-score rescaling
+            - None: no normalization
+        prefix: string prefix for output filenames
+        ftr: filter threshold - only save patches where mean value > ftr (use negative to save all)
+        zrescale: threshold value for z_rescale function (default 6)
+        percentile: tuple (low, high) - clip values outside these percentiles (e.g., [0.1, 99.9])
     """
     (dz, dx, dy) = kwargs['dh']  # (64, 256, 256)
     (sz, sx, sy) = kwargs['step']
