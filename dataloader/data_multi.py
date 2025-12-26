@@ -40,6 +40,7 @@ def get_transforms(opt, additional_targets, need=('train', 'test')):
             A.Resize(opt.resize, opt.resize),
             # may have problem here _----------------------------------
             # A.CenterCrop(height=crop_size, width=crop_size, p=1.),
+            A.CenterCrop(height=opt.cropsize, width=opt.cropsize, p=1.), 
             ToTensorV2(p=1.0),
         ], p=1.0, additional_targets=additional_targets)
     return transformations

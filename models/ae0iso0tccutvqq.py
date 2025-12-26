@@ -16,6 +16,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from networks.networks import get_scheduler
 import os
 from pytorch_msssim import ms_ssim
+import tifffile as tiff
 
 
 class GAN(BaseModel):
@@ -212,15 +213,25 @@ class GAN(BaseModel):
     def get_xy_plane(self, x):
         return x.permute(4, 1, 2, 3, 0)[::1, :, :, :, 0]
 
-    def generation(self, batch):
+    def generation(self, batch, deterministic=False):
         if self.hparams.cropz > 0:
-            z_init = np.random.randint(batch['img'][0].shape[4] - self.hparams.cropz)
+            if deterministic:
+                z_init = 0  # Deterministic for validation
+                # print(f"[DEBUG] generation cropz: deterministic=True, z_init={z_init}")
+            else:
+                z_init = np.random.randint(batch['img'][0].shape[4] - self.hparams.cropz)
+                # print(f"[DEBUG] generation cropz: deterministic=False, z_init={z_init}")
             for b in range(len(batch['img'])):
                 batch['img'][b] = batch['img'][b][:, :, :, :, z_init:z_init + self.hparams.cropz]
 
         # extra downsample
         if self.hparams.dsp > 1:
-            z_init = np.random.randint(self.hparams.dsp)
+            if deterministic:
+                z_init = 0
+                # print(f"[DEBUG] generation dsp: deterministic=True, z_init={z_init}")
+            else:
+                z_init = np.random.randint(self.hparams.dsp)
+                # print(f"[DEBUG] generation dsp: deterministic=False, z_init={z_init}")
             for b in range(len(batch['img'])):
                 batch['img'][b] = batch['img'][b][:, :, :, :, z_init::self.hparams.dsp]
 
@@ -380,6 +391,20 @@ class GAN(BaseModel):
         if self.use_ema:
             self.model_ema(self)
 
+    def validation_step(self, batch, batch_idx):
+        if batch_idx == 0:
+            self.generation(batch, deterministic=True)  # Deterministic for validation
+            if self.epoch % 20 == 0:
+                # Debug: print filenames to see if this is validation data
+                print(f"[VAL DEBUG] batch_idx={batch_idx}, filenames={batch.get('filenames', 'N/A')}")
+                print_ori = np.concatenate([self.Xup[:, c, ::].squeeze().detach().cpu().numpy()
+                                            for c in range(self.XupX.shape[1])], 1)
+                print_enc = np.concatenate([self.XupX[:, c, ::].squeeze().detach().cpu().numpy()
+                                            for c in range(self.Xup.shape[1])], 1)
+                tiff.imwrite('out/val_epoch_{}.tif'.format(self.epoch),
+                             np.concatenate([print_ori, print_enc], 2))
+        return None
+    
     def configure_optimizers(self):
         lr_d = self.hparams.lr
         lr_g = getattr(self.hparams, 'lr_g_factor', 1.0) * self.hparams.lr

@@ -220,6 +220,10 @@ class BaseModel(pl.LightningModule):
                 for k in list(loss_g.keys()):
                     if k != 'sum':
                         self.log(k, loss_g[k], on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+                # Store training data for later saving (before validation overwrites)
+                if (self.epoch % 20 == 0) and hasattr(self, 'Xup') and hasattr(self, 'XupX'):
+                    self.train_Xup = self.Xup.detach().clone()
+                    self.train_XupX = self.XupX.detach().clone()
                 return loss_g['sum']
             else:
                 return None
@@ -247,10 +251,10 @@ class BaseModel(pl.LightningModule):
 
         self.reset_metrics()
 
-        if self.epoch % 20 == 0 :
-            #  # (B, C, X, Y, Z)
-            print_ori = np.concatenate([self.Xup[:, c, ::].squeeze().detach().cpu().numpy() for c in range(self.XupX.shape[1])], 1)
-            print_enc = np.concatenate([self.XupX[:, c, ::].squeeze().detach().cpu().numpy() for c in range(self.Xup.shape[1])], 1)
+        if self.epoch % 20 == 0 and hasattr(self, 'train_Xup') and hasattr(self, 'train_XupX'):
+            #  # (B, C, X, Y, Z) - Use stored training data (not validation data)
+            print_ori = np.concatenate([self.train_Xup[:, c, ::].squeeze().detach().cpu().numpy() for c in range(self.train_XupX.shape[1])], 1)
+            print_enc = np.concatenate([self.train_XupX[:, c, ::].squeeze().detach().cpu().numpy() for c in range(self.train_Xup.shape[1])], 1)
             tiff.imwrite('out/epoch_{}.tif'.format(self.epoch),
                          np.concatenate([print_ori, print_enc], 2))
 
