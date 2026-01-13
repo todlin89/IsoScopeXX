@@ -8,6 +8,7 @@ import tifffile as tiff
 from PIL import Image
 import numpy as np
 import os
+import cv2
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 import random
@@ -29,7 +30,7 @@ def get_transforms(opt, additional_targets, need=('train', 'test')):
         transformations['train'] = A.Compose([
             A.CenterCrop(height=opt.precrop, width=opt.precrop, p=1.),
             A.Resize(opt.resize, opt.resize),
-            A.augmentations.geometric.rotate.Rotate(limit=45, p=rotate_p),
+            A.augmentations.geometric.rotate.Rotate(limit=45, p=rotate_p, border_mode=cv2.BORDER_REFLECT_101),
             A.RandomCrop(height=opt.cropsize, width=opt.cropsize, p=1.),
             #A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), max_pixel_value=400),
             #A.CLAHE(clip_limit=(1, 4), tile_grid_size=(8, 8), p=1.0),
